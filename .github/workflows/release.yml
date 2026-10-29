@@ -1,0 +1,27 @@
+name: Publish BRAT release
+on:
+  push:
+    branches: [main]
+    paths: [main.js, manifest.json, styles.css, versions.json, source-bundle.zip, '.github/workflows/release.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate plugin
+        run: |
+          node --check main.js
+          node -e "const m=require('./manifest.json'); if(!m.id||!m.version||!m.minAppVersion)process.exit(1)"
+      - name: Publish installable assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./manifest.json').version")
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "Release already exists; bump manifest.json version for a new release."
+            exit 0
+          fi
+          gh release create "$VERSION" main.js manifest.json styles.css source-bundle.zip --latest --title "$VERSION" --notes "Bản tùy chỉnh tiếng Việt. Cài bằng BRAT với URL repository. Mã nguồn và thay đổi nằm trong source-bundle.zip. Xem README và LICENSE."
